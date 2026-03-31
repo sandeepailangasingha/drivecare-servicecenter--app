@@ -24,14 +24,28 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   if (currentUser != null)
                     StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance.collection('users').doc(currentUser.uid).snapshots(),
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(currentUser.uid)
+                          .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 60,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          );
                         }
                         String userName = 'User';
-                        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
-                          final data = snapshot.data!.data() as Map<String, dynamic>?;
+                        if (snapshot.hasData &&
+                            snapshot.data != null &&
+                            snapshot.data!.exists) {
+                          final data =
+                              snapshot.data!.data() as Map<String, dynamic>?;
                           userName = data?['name'] ?? 'User';
                         }
                         return Column(
@@ -39,11 +53,17 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             Text(
                               'Hello, $userName',
-                              style: const TextStyle(fontSize: 28, color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 28,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             const Text(
                               'Welcome Back!',
-                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         );
@@ -55,11 +75,17 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Hello, Guest',
-                          style: TextStyle(fontSize: 28, color: AppColors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 28,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         Text(
                           'Welcome Back!',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -67,21 +93,40 @@ class HomeScreen extends StatelessWidget {
                   // Main Vehicle Card
                   if (currentUser != null)
                     StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance.collection('vehicles').where('ownerId', isEqualTo: currentUser.uid).limit(1).snapshots(),
+                      stream: FirebaseFirestore.instance
+                          .collection('vehicles')
+                          .where('ownerId', isEqualTo: currentUser.uid)
+                          .limit(1)
+                          .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const AppCard(
                             color: AppColors.accentBlue,
                             padding: EdgeInsets.all(24),
-                            child: Center(child: CircularProgressIndicator(color: Colors.white)),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            ),
                           );
                         }
                         String vehicleModel = 'No Vehicle Added';
                         String vehicleNumber = 'N/A';
-                        if (snapshot.hasData && snapshot.data != null && snapshot.data!.docs.isNotEmpty) {
-                          final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-                          vehicleModel = data['model']?.toString().isNotEmpty == true ? data['model'] : 'Unknown Model';
-                          vehicleNumber = data['plateNumber']?.toString().isNotEmpty == true ? data['plateNumber'] : 'Unknown Plate';
+                        if (snapshot.hasData &&
+                            snapshot.data != null &&
+                            snapshot.data!.docs.isNotEmpty) {
+                          final data =
+                              snapshot.data!.docs.first.data()
+                                  as Map<String, dynamic>;
+                          vehicleModel =
+                              data['model']?.toString().isNotEmpty == true
+                              ? data['model']
+                              : 'Unknown Model';
+                          vehicleNumber =
+                              data['plateNumber']?.toString().isNotEmpty == true
+                              ? data['plateNumber']
+                              : 'Unknown Plate';
                         }
                         return _buildVehicleCard(vehicleModel, vehicleNumber);
                       },
@@ -108,21 +153,33 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 16),
                       StreamBuilder<DocumentSnapshot>(
-                        stream: currentUser != null ? FirebaseFirestore.instance.collection('users').doc(currentUser.uid).snapshots() : const Stream.empty(),
+                        stream: currentUser != null
+                            ? FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(currentUser.uid)
+                                  .snapshots()
+                            : const Stream.empty(),
                         builder: (context, userSnap) {
-                          final userData = userSnap.data?.data() as Map<String, dynamic>?;
-                          final lastRead = userData?['lastReadNotificationsAt'] as Timestamp?;
+                          final userData =
+                              userSnap.data?.data() as Map<String, dynamic>?;
+                          final lastRead =
+                              userData?['lastReadNotificationsAt']
+                                  as Timestamp?;
 
                           return StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance.collection('notifications').snapshots(),
+                            stream: FirebaseFirestore.instance
+                                .collection('notifications')
+                                .snapshots(),
                             builder: (context, notifSnap) {
                               int unreadCount = 0;
                               if (notifSnap.hasData) {
                                 for (var doc in notifSnap.data!.docs) {
-                                  final data = doc.data() as Map<String, dynamic>;
+                                  final data =
+                                      doc.data() as Map<String, dynamic>;
                                   final ts = data['createdAt'] as Timestamp?;
                                   if (ts != null) {
-                                    if (lastRead == null || ts.compareTo(lastRead) > 0) {
+                                    if (lastRead == null ||
+                                        ts.compareTo(lastRead) > 0) {
                                       unreadCount++;
                                     }
                                   } else if (lastRead == null) {
@@ -137,12 +194,18 @@ class HomeScreen extends StatelessWidget {
                                 unreadCount: unreadCount,
                                 onTap: () {
                                   if (currentUser != null) {
-                                    FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set(
-                                      {'lastReadNotificationsAt': FieldValue.serverTimestamp()}, 
-                                      SetOptions(merge: true)
-                                    );
+                                    FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(currentUser.uid)
+                                        .set({
+                                          'lastReadNotificationsAt':
+                                              FieldValue.serverTimestamp(),
+                                        }, SetOptions(merge: true));
                                   }
-                                  Navigator.pushNamed(context, '/notifications');
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/notifications',
+                                  );
                                 },
                               );
                             },
@@ -165,7 +228,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         );
-      }
+      },
     );
   }
 
@@ -207,7 +270,11 @@ class HomeScreen extends StatelessWidget {
                   color: Colors.white.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_circle_outline, color: Colors.white, size: 32),
+                child: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 32,
+                ),
               ),
             ],
           ),
