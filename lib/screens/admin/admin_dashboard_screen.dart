@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants.dart';
 import '../../widgets/widgets.dart';
 import 'admin_booking_requests_screen.dart';
+import 'admin_manage_bookings_screen.dart';
 import 'admin_all_vehicles_screen.dart'; // ✅ NEW IMPORT
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -48,17 +49,31 @@ class AdminDashboardScreen extends StatelessWidget {
               /// ⚡ QUICK ACTIONS
               Row(
                 children: [
-                  QuickActionCard(
-                    label: 'Manage Bookings',
-                    icon: Icons.calendar_month,
-                    iconColor: AppColors.accentBlue,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const AdminBookingRequestsScreen(),
-                        ),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('bookings')
+                        .where('status', isEqualTo: 'Accepted')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int acceptedBookingsCount = 0;
+                      final qs = snapshot.data;
+                      if (qs != null) {
+                        acceptedBookingsCount = qs.docs.length;
+                      }
+                      return QuickActionCard(
+                        label: 'Accepted Bookings',
+                        icon: Icons.check_circle_outline,
+                        iconColor: AppColors.accentBlue,
+                        unreadCount: acceptedBookingsCount,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AdminManageBookingsScreen(),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -81,8 +96,9 @@ class AdminDashboardScreen extends StatelessWidget {
                     .snapshots(),
                 builder: (context, snapshot) {
                   int pendingVehiclesCount = 0;
-                  if (snapshot.hasData) {
-                    pendingVehiclesCount = snapshot.data!.docs.length;
+                  final qs = snapshot.data;
+                  if (qs != null) {
+                    pendingVehiclesCount = qs.docs.length;
                   }
                   return Row(
                     children: [
@@ -126,13 +142,14 @@ class AdminDashboardScreen extends StatelessWidget {
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('bookings')
-                    .where('status', isEqualTo: 'pending')
+                    .where('status', isEqualTo: 'Pending')
                     .snapshots(),
                 builder: (context, snapshot) {
                   int count = 0;
 
-                  if (snapshot.hasData) {
-                    count = snapshot.data!.docs.length;
+                  final qs = snapshot.data;
+                  if (qs != null) {
+                    count = qs.docs.length;
                   }
 
                   return GestureDetector(
@@ -148,8 +165,8 @@ class AdminDashboardScreen extends StatelessWidget {
                     child: ActivityCard(
                       icon: Icons.pending_actions,
                       iconColor: Colors.orange,
-                      title: '$count Pending Bookings',
-                      subtitle: 'Requires your approval',
+                      title: '$count Booking Requests',
+                      subtitle: 'Needs your approval',
                     ),
                   );
                 },

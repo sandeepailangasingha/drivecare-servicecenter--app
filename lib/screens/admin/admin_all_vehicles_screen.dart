@@ -104,13 +104,13 @@ class _AdminAllVehiclesScreenState extends State<AdminAllVehiclesScreen> {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
 
-          /// 📭 EMPTY
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          final qs = snapshot.data;
+          if (qs == null || qs.docs.isEmpty) {
             return const Center(child: Text("No vehicles found"));
           }
 
           /// 🔥 FILTER VALID DATA WITH SEARCH
-          final allVehicles = snapshot.data!.docs.where((doc) {
+          final allVehicles = qs.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final isValid = data['vehicleNumber'] != null &&
                 data['vehicleNumber'].toString().isNotEmpty &&
