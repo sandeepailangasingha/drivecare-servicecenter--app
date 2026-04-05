@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AdminAllVehiclesScreen extends StatelessWidget {
+class AdminAllVehiclesScreen extends StatefulWidget {
   const AdminAllVehiclesScreen({super.key});
+
+  @override
+  State<AdminAllVehiclesScreen> createState() => _AdminAllVehiclesScreenState();
+}
+
+class _AdminAllVehiclesScreenState extends State<AdminAllVehiclesScreen> {
+  String searchQuery = "";
+  final TextEditingController searchController = TextEditingController();
 
   /// ✅ APPROVE
   Future<void> approveVehicle(String id) async {
@@ -59,9 +67,33 @@ class AdminAllVehiclesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Vehicle Management")),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('vehicles').snapshots(),
-        builder: (context, snapshot) {
+      body: Column(
+        children: [
+          /// 🔍 SEARCH BAR
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: "Search by Vehicle or Chassis No...",
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value.toLowerCase().trim();
+                });
+              },
+            ),
+          ),
+          
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('vehicles').snapshots(),
+              builder: (context, snapshot) {
           /// 🔄 LOADING
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -77,13 +109,23 @@ class AdminAllVehiclesScreen extends StatelessWidget {
             return const Center(child: Text("No vehicles found"));
           }
 
-          /// 🔥 FILTER VALID DATA
+          /// 🔥 FILTER VALID DATA WITH SEARCH
           final allVehicles = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            return data['vehicleNumber'] != null &&
+            final isValid = data['vehicleNumber'] != null &&
                 data['vehicleNumber'].toString().isNotEmpty &&
                 data['chassisNumber'] != null &&
                 data['chassisNumber'].toString().isNotEmpty;
+
+            if (!isValid) return false;
+
+            if (searchQuery.isNotEmpty) {
+              final vNum = data['vehicleNumber'].toString().toLowerCase();
+              final cNum = data['chassisNumber'].toString().toLowerCase();
+              return vNum.contains(searchQuery) || cNum.contains(searchQuery);
+            }
+
+            return true;
           }).toList();
 
           /// 🔥 SPLIT DATA
@@ -218,7 +260,16 @@ class AdminAllVehiclesScreen extends StatelessWidget {
             ],
           );
         },
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 }

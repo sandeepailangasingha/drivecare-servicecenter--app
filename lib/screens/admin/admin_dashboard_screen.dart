@@ -74,33 +74,46 @@ class AdminDashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              Row(
-                children: [
-                  /// 🚗 REGISTER VEHICLE (UPDATED)
-                  QuickActionCard(
-                    label: 'Register Vehicle',
-                    icon: Icons.directions_car,
-                    iconColor: AppColors.accentPurple,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminAllVehiclesScreen(),
-                        ),
-                      );
-                    },
-                  ),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('vehicles')
+                    .where('status', isEqualTo: 'pending')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  int pendingVehiclesCount = 0;
+                  if (snapshot.hasData) {
+                    pendingVehiclesCount = snapshot.data!.docs.length;
+                  }
+                  return Row(
+                    children: [
+                      /// 🚗 REGISTER VEHICLE (UPDATED)
+                      QuickActionCard(
+                        label: 'Register Vehicle',
+                        icon: Icons.directions_car,
+                        iconColor: AppColors.accentPurple,
+                        unreadCount: pendingVehiclesCount,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AdminAllVehiclesScreen(),
+                            ),
+                          );
+                        },
+                      ),
 
-                  const SizedBox(width: 16),
+                      const SizedBox(width: 16),
 
-                  QuickActionCard(
-                    label: 'Broadcast Message',
-                    icon: Icons.campaign_outlined,
-                    iconColor: Colors.orange,
-                    onTap: () =>
-                        Navigator.pushNamed(context, '/admin_notifications'),
-                  ),
-                ],
+                      QuickActionCard(
+                        label: 'Broadcast Message',
+                        icon: Icons.campaign_outlined,
+                        iconColor: Colors.orange,
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/admin_notifications'),
+                      ),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(height: 32),

@@ -15,6 +15,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   final TextEditingController vehicleNumberController = TextEditingController();
   final TextEditingController chassisNumberController = TextEditingController();
+  final TextEditingController brandController = TextEditingController();
+  final TextEditingController modelController = TextEditingController();
+
+  String? selectedVehicleType;
+  String? selectedFuelType;
+  String? selectedTransmission;
+
+  final List<String> vehicleTypes = ['Car', 'Bike', 'Van', 'Lorry', 'Other'];
+  final List<String> fuelTypes = ['Petrol', 'Diesel', 'Electric', 'Hybrid'];
+  final List<String> transmissionTypes = ['Manual', 'Auto'];
 
   bool isLoading = false;
 
@@ -29,6 +39,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'customerId': widget.customerId,
         'vehicleNumber': vehicleNumberController.text.trim(),
         'chassisNumber': chassisNumberController.text.trim(),
+        'vehicleType': selectedVehicleType,
+        'brand': brandController.text.trim(),
+        'model': modelController.text.trim(),
+        'fuelType': selectedFuelType,
+        'transmission': selectedTransmission,
         'status': 'pending', // 🔥 important
         'createdAt': Timestamp.now(),
       });
@@ -51,6 +66,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   void dispose() {
     vehicleNumberController.dispose();
     chassisNumberController.dispose();
+    brandController.dispose();
+    modelController.dispose();
     super.dispose();
   }
 
@@ -58,57 +75,125 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Add Vehicle")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              /// 🚗 VEHICLE NUMBER
-              TextFormField(
-                controller: vehicleNumberController,
-                decoration: const InputDecoration(
-                  labelText: "Vehicle Number",
-                  border: OutlineInputBorder(),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                /// 🚘 VEHICLE TYPE
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: "Vehicle Type",
+                    border: OutlineInputBorder(),
+                  ),
+                  value: selectedVehicleType,
+                  items: vehicleTypes.map((type) {
+                    return DropdownMenuItem(value: type, child: Text(type));
+                  }).toList(),
+                  onChanged: (value) => setState(() => selectedVehicleType = value),
+                  validator: (value) => value == null ? "Select vehicle type" : null,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter vehicle number";
-                  }
-                  return null;
-                },
-              ),
+                const SizedBox(height: 15),
 
-              const SizedBox(height: 15),
-
-              /// 🔧 CHASSIS NUMBER
-              TextFormField(
-                controller: chassisNumberController,
-                decoration: const InputDecoration(
-                  labelText: "Chassis Number",
-                  border: OutlineInputBorder(),
+                /// 🏢 BRAND
+                TextFormField(
+                  controller: brandController,
+                  decoration: const InputDecoration(
+                    labelText: "Brand",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? "Enter brand" : null,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter chassis number";
-                  }
-                  return null;
-                },
-              ),
+                const SizedBox(height: 15),
 
-              const SizedBox(height: 25),
-
-              /// 🚀 SUBMIT BUTTON
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : addVehicle,
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Submit Request"),
+                /// 🏷️ MODEL
+                TextFormField(
+                  controller: modelController,
+                  decoration: const InputDecoration(
+                    labelText: "Model",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? "Enter model" : null,
                 ),
-              ),
-            ],
+                const SizedBox(height: 15),
+
+                /// ⛽ FUEL TYPE
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: "Fuel Type",
+                    border: OutlineInputBorder(),
+                  ),
+                  value: selectedFuelType,
+                  items: fuelTypes.map((type) {
+                    return DropdownMenuItem(value: type, child: Text(type));
+                  }).toList(),
+                  onChanged: (value) => setState(() => selectedFuelType = value),
+                  validator: (value) => value == null ? "Select fuel type" : null,
+                ),
+                const SizedBox(height: 15),
+
+                /// ⚙️ TRANSMISSION
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: "Transmission",
+                    border: OutlineInputBorder(),
+                  ),
+                  value: selectedTransmission,
+                  items: transmissionTypes.map((type) {
+                    return DropdownMenuItem(value: type, child: Text(type));
+                  }).toList(),
+                  onChanged: (value) => setState(() => selectedTransmission = value),
+                  validator: (value) => value == null ? "Select transmission type" : null,
+                ),
+                const SizedBox(height: 15),
+
+                /// 🚗 VEHICLE NUMBER
+                TextFormField(
+                  controller: vehicleNumberController,
+                  decoration: const InputDecoration(
+                    labelText: "Vehicle Number",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Enter vehicle number";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 15),
+
+                /// 🔧 CHASSIS NUMBER
+                TextFormField(
+                  controller: chassisNumberController,
+                  decoration: const InputDecoration(
+                    labelText: "Chassis Number",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Enter chassis number";
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 25),
+
+                /// 🚀 SUBMIT BUTTON
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : addVehicle,
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Submit Request"),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

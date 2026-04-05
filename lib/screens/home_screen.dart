@@ -85,7 +85,8 @@ class HomeScreen extends StatelessWidget {
                       StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('vehicles')
-                            .where('ownerId', isEqualTo: currentUser.uid)
+                            .where('customerId', isEqualTo: currentUser.uid)
+                            .where('status', isEqualTo: 'approved')
                             .limit(1)
                             .snapshots(),
                         builder: (context, snapshot) {
@@ -106,14 +107,19 @@ class HomeScreen extends StatelessWidget {
                               snapshot.data!.docs.isNotEmpty) {
                             final data = snapshot.data!.docs.first.data()
                                 as Map<String, dynamic>;
-                            vehicleModel =
-                                data['model']?.toString().isNotEmpty == true
-                                    ? data['model']
+                            
+                            final brand = data['brand']?.toString() ?? '';
+                            final model = data['model']?.toString() ?? '';
+                            final brandModel = '$brand $model'.trim();
+                            
+                            vehicleModel = brandModel.isNotEmpty
+                                    ? brandModel
                                     : 'Unknown Model';
+                                    
                             vehicleNumber =
-                                data['plateNumber']?.toString().isNotEmpty ==
+                                data['vehicleNumber']?.toString().isNotEmpty ==
                                         true
-                                    ? data['plateNumber']
+                                    ? data['vehicleNumber']
                                     : 'Unknown Plate';
                           }
                           return _buildVehicleCard(vehicleModel, vehicleNumber);
