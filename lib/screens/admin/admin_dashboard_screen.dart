@@ -5,9 +5,85 @@ import '../../widgets/widgets.dart';
 import 'admin_booking_requests_screen.dart';
 import 'admin_manage_bookings_screen.dart';
 import 'admin_all_vehicles_screen.dart'; // ✅ NEW IMPORT
+import 'admin_history_screen.dart';
+import 'admin_add_vehicle_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
+
+  void _showTodayStats(BuildContext context) {
+    DateTime now = DateTime.now();
+    DateTime startOfDay = DateTime(now.year, now.month, now.day);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Today\'s Service Stats', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: FutureBuilder<QuerySnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('bookings')
+                .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+                .get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+              }
+              if (snapshot.hasError) {
+                return const Text('Failed to load stats');
+              }
+              
+              final docs = snapshot.data?.docs ?? [];
+              int total = docs.length;
+              int accepted = 0;
+              int declined = 0;
+              
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final status = data['status'];
+                if (status == 'Accepted' || status == 'Completed') {
+                  accepted++;
+                } else if (status == 'Declined') {
+                  declined++;
+                }
+              }
+              
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   ListTile(
+                     contentPadding: EdgeInsets.zero,
+                     leading: const Icon(Icons.assignment, color: Colors.blue),
+                     title: const Text('Total Requests Received'),
+                     trailing: Text('$total', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                   ),
+                   ListTile(
+                     contentPadding: EdgeInsets.zero,
+                     leading: const Icon(Icons.check_circle, color: Colors.green),
+                     title: const Text('Accepted'),
+                     trailing: Text('$accepted', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green)),
+                   ),
+                   ListTile(
+                     contentPadding: EdgeInsets.zero,
+                     leading: const Icon(Icons.cancel, color: Colors.red),
+                     title: const Text('Declined'),
+                     trailing: Text('$declined', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red)),
+                   ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +158,14 @@ class AdminDashboardScreen extends StatelessWidget {
                     label: 'Update History',
                     icon: Icons.history_edu,
                     iconColor: AppColors.accentGreen,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminHistoryScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -102,9 +185,9 @@ class AdminDashboardScreen extends StatelessWidget {
                   }
                   return Row(
                     children: [
-                      /// 🚗 REGISTER VEHICLE (UPDATED)
+                      /// 🚗 MANAGE VEHICLES
                       QuickActionCard(
-                        label: 'Register Vehicle',
+                        label: 'Manage Vehicles',
                         icon: Icons.directions_car,
                         iconColor: AppColors.accentPurple,
                         unreadCount: pendingVehiclesCount,
@@ -130,6 +213,29 @@ class AdminDashboardScreen extends StatelessWidget {
                     ],
                   );
                 },
+              ),
+
+              const SizedBox(height: 16),
+              
+              Row(
+                children: [
+                   QuickActionCard(
+                     label: 'Add New Vehicle',
+                     icon: Icons.add_circle_outline,
+                     iconColor: Colors.blueAccent,
+                     onTap: () {
+                       Navigator.push(
+                         context,
+                         MaterialPageRoute(
+                           builder: (context) => const AdminAddVehicleScreen(),
+                         ),
+                       );
+                     },
+                   ),
+                   const SizedBox(width: 16),
+                   // Dummy card to keep proportions
+                   const Expanded(child: SizedBox()),
+                ],
               ),
 
               const SizedBox(height: 32),
@@ -175,11 +281,24 @@ class AdminDashboardScreen extends StatelessWidget {
               const SizedBox(height: 12),
 
               /// ✅ COMPLETED SERVICES
-              const ActivityCard(
-                icon: Icons.check_circle_outline,
-                iconColor: AppColors.accentGreen,
-                title: '12 Services Completed',
-                subtitle: 'Today',
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('service_history')
+                    .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)))
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  int completedCount = 0;
+                  if (snapshot.hasData) {
+                    completedCount = snapshot.data!.docs.length;
+                  }
+                  return ActivityCard(
+                    icon: Icons.check_circle_outline,
+                    iconColor: AppColors.accentGreen,
+                    title: '$completedCount Services Completed',
+                    subtitle: 'Today',
+                    onTap: () => _showTodayStats(context),
+                  );
+                },
               ),
             ],
           ),

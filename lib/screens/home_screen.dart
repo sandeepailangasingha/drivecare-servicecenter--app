@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants.dart';
 import '../widgets/widgets.dart';
+import 'my_appointments_screen.dart';
+import 'history_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -133,17 +135,31 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       children: [
                         QuickActionCard(
-                          label: 'Book Service',
-                          icon: Icons.calendar_month_outlined,
+                          label: 'My Appointments',
+                          icon: Icons.event_note_outlined,
                           iconColor: AppColors.primary,
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MyAppointmentsScreen(),
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(width: 16),
                         QuickActionCard(
                           label: 'View History',
                           icon: Icons.assignment_outlined,
                           iconColor: AppColors.accentPurple,
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const HistoryScreen(),
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(width: 16),
                         StreamBuilder<DocumentSnapshot>(

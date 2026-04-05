@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants.dart';
+import 'admin_history_screen.dart';
 
 class AdminManageBookingsScreen extends StatelessWidget {
   const AdminManageBookingsScreen({super.key});
@@ -181,9 +182,22 @@ class AdminManageBookingsScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            icon: const Icon(Icons.check_circle_outline, size: 20),
-                            onPressed: () => _updateBookingStatus(context, doc.id, 'Completed'),
-                            label: const Text('Mark Completed'),
+                            icon: const Icon(Icons.add_chart, size: 20),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AdminHistoryScreen(
+                                    bookingId: doc.id,
+                                    initialCustomerId: data['customerId'] ?? '',
+                                    initialCustomerEmail: data['customerEmail'] ?? 'Unknown User',
+                                    initialVehicleNumber: data['vehicleNumber'] ?? 'N/A',
+                                    initialServiceType: data['serviceType'] ?? 'Unknown',
+                                  ),
+                                ),
+                              );
+                            },
+                            label: const Text('Complete & Add Report'),
                           ),
                         ],
                       ),
