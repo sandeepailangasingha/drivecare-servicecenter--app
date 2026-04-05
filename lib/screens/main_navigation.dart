@@ -4,6 +4,7 @@ import '../core/constants.dart';
 import 'home_screen.dart';
 import 'store_screen.dart';
 import 'vehicle_list_screen.dart';
+import 'booking_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -25,8 +26,8 @@ class _MainNavigationState extends State<MainNavigation> {
       customerId: user!.uid,
     ),
 
-    /// 📅 Booking (temporary placeholder)
-    const Center(child: Text("Booking Screen")),
+    /// 📅 Booking 
+    const BookingScreen(),
 
     const StoreScreen(),
   ];
