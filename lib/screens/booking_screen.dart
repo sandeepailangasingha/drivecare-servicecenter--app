@@ -15,6 +15,7 @@ class _BookingScreenState extends State<BookingScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _selectedTimeSlot;
   String? _selectedServiceType;
+  String? _selectedVehicleNumber;
   bool _isLoading = false;
 
   final List<String> _timeSlots = [
@@ -33,10 +34,10 @@ class _BookingScreenState extends State<BookingScreen> {
   ];
 
   Future<void> _submitBooking() async {
-    if (_selectedTimeSlot == null || _selectedServiceType == null) {
+    if (_selectedTimeSlot == null || _selectedServiceType == null || _selectedVehicleNumber == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select Date, Time, and Service Type.'),
+          content: Text('Please select a Vehicle, Date, Time, and Service Type.'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -53,6 +54,7 @@ class _BookingScreenState extends State<BookingScreen> {
       await FirebaseFirestore.instance.collection('bookings').add({
         'customerId': user.uid,
         'customerEmail': user.email,
+        'vehicleNumber': _selectedVehicleNumber,
         'date': Timestamp.fromDate(_selectedDate),
         'timeSlot': _selectedTimeSlot,
         'serviceType': _selectedServiceType,
@@ -73,12 +75,13 @@ class _BookingScreenState extends State<BookingScreen> {
         _selectedDate = DateTime.now();
         _selectedTimeSlot = null;
         _selectedServiceType = null;
+        _selectedVehicleNumber = null;
       });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to book: \$e'),
+          content: Text('Failed to book: $e'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -112,6 +115,71 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
             const SizedBox(height: 24),
+
+            // Vehicle Selection Section
+            _buildSectionCard(
+              title: 'Select Vehicle',
+              icon: Icons.directions_car,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('vehicles')
+                    .where('customerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final qs = snapshot.data;
+                  if (qs == null || qs.docs.isEmpty) {
+                    return const Text("No vehicles found. Please add a vehicle first in the Vehicles tab.");
+                  }
+
+                  final allVehicles = qs.docs;
+                  final vehicles = allVehicles.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['status'] == 'approved';
+                  }).toList();
+
+                  if (vehicles.isEmpty) {
+                    return const Text("No approved vehicles found. Please wait for your vehicle to be approved.");
+                  }
+
+                  // Verify selected vehicle is still valid
+                  if (_selectedVehicleNumber != null &&
+                      !vehicles.any((doc) => (doc.data() as Map<String, dynamic>)['vehicleNumber'] == _selectedVehicleNumber)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => _selectedVehicleNumber = null);
+                    });
+                  }
+
+                  return DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      hintText: 'Choose your vehicle',
+                      filled: true,
+                      fillColor: AppColors.lightGrey,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    value: _selectedVehicleNumber,
+                    items: vehicles.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final vNum = data['vehicleNumber'] as String;
+                      return DropdownMenuItem(
+                        value: vNum,
+                        child: Text(vNum),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() => _selectedVehicleNumber = val);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
 
             // Date Picker Section
             _buildSectionCard(
@@ -215,9 +283,167 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
             const SizedBox(height: 40),
+
+            // Divider before showing the user's booking history
+            const Divider(thickness: 1.5),
+            const SizedBox(height: 20),
+
+            // My Bookings Section
+            _buildMyBookingsSection(),
+            const SizedBox(height: 40),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMyBookingsSection() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'My Appointments',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('bookings')
+              .where('customerId', isEqualTo: user.uid)
+              .snapshots(),
+          // Note: using client-side sorting below to avoid needing a Firestore Composite Index
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final qs = snapshot.data;
+            if (qs == null || qs.docs.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text(
+                    "You don't have any bookings yet.",
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              );
+            }
+
+            // Get docs and sort them safely
+            final docs = qs.docs;
+            final sortedDocs = docs.toList()..sort((a, b) {
+              try {
+                final aData = a.data() as Map<String, dynamic>? ?? {};
+                final bData = b.data() as Map<String, dynamic>? ?? {};
+                final aDate = aData['createdAt'];
+                final bDate = bData['createdAt'];
+                DateTime aTime = DateTime.now();
+                DateTime bTime = DateTime.now();
+                if (aDate is Timestamp) aTime = aDate.toDate();
+                if (bDate is Timestamp) bTime = bDate.toDate();
+                return bTime.compareTo(aTime);
+              } catch (e) {
+                return 0;
+              }
+            });
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: sortedDocs.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final data = sortedDocs[index].data() as Map<String, dynamic>;
+                final serviceType = data['serviceType'] ?? 'Unknown Service';
+                final status = data['status'] ?? 'Pending';
+                final timeSlot = data['timeSlot'] ?? '';
+                final dateTimestamp = data['date'] as Timestamp?;
+                final dateStr = dateTimestamp != null 
+                    ? DateFormat('MMM dd').format(dateTimestamp.toDate())
+                    : '';
+
+                Color statusColor;
+                IconData statusIcon;
+
+                if (status == 'Accepted') {
+                  statusColor = AppColors.success;
+                  statusIcon = Icons.check_circle;
+                } else if (status == 'Declined') {
+                  statusColor = AppColors.error;
+                  statusIcon = Icons.cancel;
+                } else {
+                  statusColor = Colors.orange;
+                  statusIcon = Icons.pending;
+                }
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.lightGrey),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                      backgroundColor: statusColor.withOpacity(0.1),
+                      child: Icon(statusIcon, color: statusColor),
+                    ),
+                    title: Text(
+                      serviceType,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('$dateStr at $timeSlot'),
+                        if (status == 'Declined') ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Reason: ${data['declineReason'] ?? 'No reason provided by Admin'}',
+                            style: const TextStyle(
+                              color: Colors.redAccent, 
+                              fontSize: 13, 
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 
