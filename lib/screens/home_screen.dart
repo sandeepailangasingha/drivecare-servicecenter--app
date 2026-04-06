@@ -82,14 +82,13 @@ class HomeScreen extends StatelessWidget {
                         ],
                       ),
                     const SizedBox(height: 32),
-                    // Main Vehicle Card
+                    // Main Vehicle Card (Horizontal Scroll)
                     if (currentUser != null)
                       StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('vehicles')
                             .where('customerId', isEqualTo: currentUser.uid)
                             .where('status', isEqualTo: 'approved')
-                            .limit(1)
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
@@ -102,29 +101,71 @@ class HomeScreen extends StatelessWidget {
                                       color: Colors.white)),
                             );
                           }
-                          String vehicleModel = 'No Vehicle Added';
-                          String vehicleNumber = 'N/A';
-                          if (snapshot.hasData &&
-                              snapshot.data != null &&
-                              snapshot.data!.docs.isNotEmpty) {
-                            final data = snapshot.data!.docs.first.data()
-                                as Map<String, dynamic>;
-                            
-                            final brand = data['brand']?.toString() ?? '';
-                            final model = data['model']?.toString() ?? '';
-                            final brandModel = '$brand $model'.trim();
-                            
-                            vehicleModel = brandModel.isNotEmpty
-                                    ? brandModel
-                                    : 'Unknown Model';
-                                    
-                            vehicleNumber =
-                                data['vehicleNumber']?.toString().isNotEmpty ==
-                                        true
-                                    ? data['vehicleNumber']
-                                    : 'Unknown Plate';
+
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
+                            return _buildVehicleCard('No Vehicle Added', 'N/A');
                           }
-                          return _buildVehicleCard(vehicleModel, vehicleNumber);
+
+                          final vehicles = snapshot.data!.docs;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (vehicles.length > 1)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        'Swipe for more',
+                                        style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.chevron_right,
+                                          color: AppColors.textSecondary,
+                                          size: 16),
+                                    ],
+                                  ),
+                                ),
+                              SizedBox(
+                                height: 160,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: vehicles.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(width: 16),
+                                  itemBuilder: (context, index) {
+                                    final data = vehicles[index].data()
+                                        as Map<String, dynamic>;
+                                    
+                                    final brand = data['brand']?.toString() ?? '';
+                                    final model = data['model']?.toString() ?? '';
+                                    final brandModel = '$brand $model'.trim();
+                                    
+                                    final vehicleModel = brandModel.isNotEmpty
+                                            ? brandModel
+                                            : 'Unknown Model';
+                                            
+                                    final vehicleNumber =
+                                        data['vehicleNumber']?.toString().isNotEmpty ==
+                                                true
+                                            ? data['vehicleNumber']
+                                            : 'Unknown Plate';
+
+                                    return SizedBox(
+                                      width: MediaQuery.of(context).size.width * 0.85,
+                                      child: _buildVehicleCard(vehicleModel, vehicleNumber),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
                         },
                       )
                     else
@@ -223,14 +264,75 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 32),
-                    const SectionHeader(title: 'Recent Activity'),
-                    const SizedBox(height: 16),
-                    const ActivityCard(
-                      icon: Icons.check_circle_outlined,
-                      iconColor: AppColors.accentGreen,
-                      title: 'System Active',
-                      subtitle: 'Ready to track your vehicle health.',
+                    SectionHeader(
+                      title: 'Recent Activity',
+                      actionText: 'View All',
+                      onActionPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HistoryScreen(),
+                          ),
+                        );
+                      },
                     ),
+                    const SizedBox(height: 16),
+                    if (currentUser != null)
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('service_history')
+                            .where('customerId', isEqualTo: currentUser.uid)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return const ActivityCard(
+                              icon: Icons.info_outline,
+                              iconColor: AppColors.grey,
+                              title: 'No Recent Activity',
+                              subtitle: 'Your service records will appear here.',
+                            );
+                          }
+
+                          final docs = snapshot.data!.docs.toList()..sort((a, b) {
+                            final aDate = (a.data() as Map<String, dynamic>)['createdAt'];
+                            final bDate = (b.data() as Map<String, dynamic>)['createdAt'];
+                            DateTime aTime = DateTime.fromMillisecondsSinceEpoch(0);
+                            DateTime bTime = DateTime.fromMillisecondsSinceEpoch(0);
+                            if (aDate is Timestamp) aTime = aDate.toDate();
+                            if (bDate is Timestamp) bTime = bDate.toDate();
+                            return bTime.compareTo(aTime);
+                          });
+
+                          final latestEntry = docs.first.data() as Map<String, dynamic>;
+                          final serviceType = latestEntry['serviceType'] ?? 'Service Completed';
+                          final vehicleNumber = latestEntry['vehicleNumber'] ?? 'Unknown Vehicle';
+
+                          return ActivityCard(
+                            icon: Icons.build_circle_outlined,
+                            iconColor: AppColors.accentBlue,
+                            title: 'Service: $serviceType',
+                            subtitle: 'Vehicle: $vehicleNumber',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const HistoryScreen(),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      )
+                    else
+                      const ActivityCard(
+                        icon: Icons.info_outline,
+                        iconColor: AppColors.grey,
+                        title: 'System Active',
+                        subtitle: 'Please log in to view activities.',
+                      ),
                   ],
                 ),
               ),
